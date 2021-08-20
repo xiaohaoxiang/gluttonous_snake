@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="icon" href="https://img-blog.csdnimg.cn/abe2b87251a64ea0a45075491e893a71.jpg" type="image/x-icon">
+    <title>snack</title>
+
+</head>
+
+<body>
+
+    <canvas id="cvs"></canvas>
+    <div id="startDiv" style="font-size: 24px;">
+        <div id="gameOver" style="font-size: 30px; text-align: center;">
+            <br />
+        </div>
+        <div style="text-align: center;">
+            speed:
+        </div>
+        <input id="inputBox" tabindex="0" name="speed:" style="margin: auto auto;  display: block;" value="5" />
+        <br />
+        <button id="startButton" value="Start" tabindex="1"
+            style="width:200px; height:100px; margin: auto auto; display: block; font-size: 30px;">
+            Start
+        </button>
+    </div>
+
+</body>
+
+<script>
+
+    const N = 20, M = 20, cnt = N * M;
+    const BackgroundColor = "#B2C8BB", SnackColor = "#A0EFC9", HeadColor = "#FFAFC9", FoodColor = "#EF8080";
+
+    var cvs = document.getElementById("cvs");
+    var ctx = cvs.getContext("2d");
+
+    var startDiv = document.getElementById("startDiv");
+    var gameOverDiv = document.getElementById("gameOver");
+    var startButton = document.getElementById("startButton");
+    var inputBox = document.getElementById("inputBox");
+
+    var runHandle;
+
+    var que, dir, isMoving, food, speed;
+
+    var _n = 1;
+    while (_n < cnt) {
+        _n *= 2;
+    }
+    var dat = new Array(2 * _n + 1);
+
+    function fillXY(x, y, clr) {
+        ctx.fillStyle = clr;
+        ctx.fillRect(1 + 20 * x, 1 + 20 * y, 19, 19);
+    }
+
+    function init() {
+        que = [];
+        for (var i = 0; i < 3; i++) {
+            que.push(num2cord(i));
+        }
+        dir = { x: 0, y: 1 };
+        isMoving = false;
+
+        for (var i = 0; i < cnt; i++) {
+            dat[_n + i] = 1;
+        }
+        dat.fill(1, _n, _n + cnt);
+        dat.fill(0, _n + cnt, 2 * _n + 1);
+        for (var i = _n - 1; i >= 0; i--) {
+            dat[i] = dat[2 * i + 1] + dat[2 * i + 2];
+        }
+
+        que.forEach(e => {
+            update(cord2num(e), -1);
+        });
+
+        food = getRandomEmptyPos();
+    }
+
+    function update(k, x) {
+
+        k += _n;
+        dat[k] += x;
+        while (k) {
+            k = Math.floor((k - 1) / 2);
+            dat[k] += x;
+        }
+    }
+    function query(k) {
+        return dat[_n + k];
+    }
+
+    function getRandomEmptyPos() {
+        var k = 0;
+        while (k < _n) {
+            k = 2 * k + 1;
+            var mid = dat[k];
+            if (Math.floor(Math.random() * (mid + dat[k + 1])) >= mid) {
+                k++;
+            }
+        }
+        return num2cord(k - _n);
+    }
+
+    function cord2num(p) {
+        return N * p.x + p.y;
+    }
+
+    function num2cord(num) {
+        return { x: Math.floor(num / N), y: num % N }
+    }
+
+    function run() {
+        var cvs = document.getElementById("cvs");
+        cvs.height = 20 * N + 1;
+        cvs.width = 20 * M + 1;
+        cvs.style.backgroundColor = BackgroundColor;
+        cvs.style.border = "darkorchid solid 2px";
+        cvs.style.margin = "auto auto";
+        cvs.style.display = "block";
+        var ctx = cvs.getContext("2d");
+
+        var head = Object.create(que[que.length - 1]);
+
+        head.x = (head.x + dir.x + N) % N;
+        head.y = (head.y + dir.y + M) % M;
+        isMoving = false;
+
+        if (!query(cord2num(head))) {
+            clearInterval(runHandle)
+            cvs.style.display = "none";
+            document.onkeydown = enterEventCallBack;
+            startDiv.style.display = "";
+            selectInputBoxValue();
+            gameOverDiv.innerHTML = "Game Over"
+            return;
+        }
+
+        update(cord2num(head), -1);
+
+        if (head.x == food.x && head.y == food.y) {
+            food = getRandomEmptyPos();
+        }
+        else {
+            var tail = que.shift();
+            fillXY(tail.x, tail.y, BackgroundColor);
+            update(cord2num(tail), 1);
+        }
+        fillXY(food.x, food.y, FoodColor);
+        que.forEach(e => {
+            fillXY(e.x, e.y, SnackColor);
+        });
+        que.push(head);
+        fillXY(head.x, head.y, HeadColor);
+    };
+
+    function selectInputBoxValue() {
+        inputBox.selectionStart = 0;
+        inputBox.selectionEnd = inputBox.value.length;
+        inputBox.select();
+    }
+
+    var turnEventCallback = function (event) {
+        var e = event || window.event || arguments.callee.caller.arguments[0];
+        if (isMoving) {
+            return;
+        }
+        isMoving = true;
+
+        if (e && e.keyCode == 65 && dir.y) { // A
+            dir.x = -1;
+            dir.y = 0;
+        }
+        else if (e && e.keyCode == 68 && dir.y) { // D
+            dir.x = 1;
+            dir.y = 0;
+        }
+        else if (e && e.keyCode == 87 && dir.x) { // W
+            dir.x = 0;
+            dir.y = -1;
+        }
+        else if (e && e.keyCode == 83 && dir.x) { // S
+            dir.x = 0;
+            dir.y = 1;
+        }
+    };
+
+    var enterEventCallBack = function (event) {
+        var e = event || window.event || arguments.callee.caller.arguments[0];
+        if (e && e.keyCode == 13) {
+            startButton.click();
+        }
+    }
+
+    startButton.onclick = function () {
+        speed = parseFloat(inputBox.value);
+        if (!(1 <= speed && speed <= 32)) {
+            speed = 3
+        }
+        speed = Math.ceil(600 / speed);
+        startDiv.style.display = "none";
+        init();
+        runHandle = setInterval("run()", speed);
+        document.onkeydown = turnEventCallback;
+    }
+
+    inputBox.onkeyup = inputBox.onafterpaste = function () {
+        if (this.value.length == 1) {
+            this.value = this.value.replace(/[^1-9]/g, '');
+        }
+        else {
+            this.value = this.value.replace(/\D/g, '');
+        }
+    }
+    document.onkeydown = enterEventCallBack;
+    selectInputBoxValue();
+
+</script>
+
+</html>
